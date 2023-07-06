@@ -3,6 +3,7 @@ const UpgradeScripts = require('./upgrades')
 const UpdateActions = require('./actions')
 const UpdateFeedbacks = require('./feedbacks')
 const UpdateVariableDefinitions = require('./variables')
+const ssh = require('ssh2')
 
 class SSHInstance extends InstanceBase {
 	constructor(internal) {
@@ -12,12 +13,77 @@ class SSHInstance extends InstanceBase {
 	async init(config) {
 		this.config = config
 
-		this.updateStatus(InstanceStatus.Ok)
-
 		this.updateActions() // export actions
-		this.updateFeedbacks() // export feedbacks
-		this.updateVariableDefinitions() // export variable definitions
+		//this.updateFeedbacks() // export feedbacks
+		//this.updateVariableDefinitions() // export variable definitions
+		this.initSSH() // start up SSH connection
 	}
+
+	initSSH() {
+		if (this.sshClient !== undefined) {
+			// clean up the SSH connection
+			this.sshClient.destroy()
+			delete this.sshClient
+			this.updateStatus(InstanceStatus.Disconnected)
+		}
+
+		if (this.config.host) {
+			// create the ssh connection
+			this.sshClient = new ssh.Client()
+
+			// setup the needed parameters for the SSH client connection
+			const authConfig = {
+				host: this.config.host,
+				port: this.config.port,
+				username: this.config.username,
+				password: this.config.password,
+			}
+
+			// initiate the SSH client connection
+			this.sshClient.connect(authConfig)
+			this.updateStatus(InstanceStatus.Connecting)
+
+			// for password-based authentication, if the server requests for a password change,
+			// we really can't do this interactively, so we will need to put the module into an error state and try again.
+			this.sshClient.on('change password', (message) => {
+				this.log(
+					'error',
+					'Server requests that you change your password, please do this manually and try the module again in Companion: ' +
+						message
+				)
+				this.updateStatus(InstanceStatus.ConnectionFailure)
+			})
+
+			this.sshClient.on('error', (err) => {
+				this.log('error', 'Server connection error: ' + err)
+				this.updateStatus(InstanceStatus.ConnectionFailure)
+			})
+
+			this.sshClient.on('end', () => {
+				this.log('error', 'Server ended connection')
+				this.updateStatus(InstanceStatus.Disconnected)
+			})
+
+			this.sshClient.on('timeout', () => {
+				this.log('error', 'Server connection timed out')
+				this.updateStatus(InstanceStatus.ConnectionFailure)
+			})
+
+			this.sshClient.on('connect', () => {
+				this.log('debug', 'Server connection successful!')
+				this.updateStatus(InstanceStatus.Ok)
+			})
+
+			this.sshClient.on('greeting', (greeting) => {
+				this.log('debug', 'Server greeting: ' + greeting)
+			})
+
+			this.sshClient.on('handshake', (negotiated) => {
+				this.log('debug', 'Server handshake: ' + negotiated)
+			})
+		}
+	}
+
 	// When module gets deleted
 	async destroy() {
 		this.log('debug', 'destroy')
@@ -33,9 +99,9 @@ class SSHInstance extends InstanceBase {
 			{
 				type: 'textinput',
 				id: 'host',
-				label: 'Target IP',
+				label: 'Target Hostname/IP',
 				width: 8,
-				regex: Regex.IP,
+				regex: Regex.HOSTNAME,
 			},
 			{
 				type: 'textinput',
@@ -43,6 +109,19 @@ class SSHInstance extends InstanceBase {
 				label: 'Target Port',
 				width: 4,
 				regex: Regex.PORT,
+				default: 22,
+			},
+			{
+				type: 'textinput',
+				id: 'username',
+				label: 'Username',
+				width: 6,
+			},
+			{
+				type: 'textinput',
+				id: 'password',
+				label: 'Password',
+				width: 6,
 			},
 		]
 	}

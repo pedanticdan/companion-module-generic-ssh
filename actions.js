@@ -1,19 +1,24 @@
 module.exports = function (self) {
 	self.setActionDefinitions({
-		sample_action: {
-			name: 'My First Action',
+		exec_command: {
+			name: 'Execute SSH Command',
 			options: [
 				{
-					id: 'num',
-					type: 'number',
-					label: 'Test',
-					default: 5,
-					min: 0,
-					max: 100,
+					id: 'cmd',
+					type: 'textinput',
+					label: 'Command',
 				},
 			],
 			callback: async (event) => {
-				console.log('Hello world!', event.options.num)
+				self.sshClient.exec(event.options.cmd, (err, stream) => {
+					stream.on('data', (data) => {
+						self.log('debug', data)
+					})
+
+					stream.stderr.on('data', (data) => {
+						self.log('error', data)
+					})
+				})
 			},
 		},
 	})

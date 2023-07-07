@@ -1,7 +1,4 @@
 module.exports = async function (self) {
-	self.setVariableDefinitions([
-		{ variableId: 'variable1', name: 'My first variable' },
-		{ variableId: 'variable2', name: 'My second variable' },
-		{ variableId: 'variable3', name: 'Another variable' },
-	])
+	self.setVariableDefinitions([{ variableId: self.getConstants().CMD_ERROR_VAR_NAME, name: 'Command Error' }])
+	self.setVariableValues({ [self.getConstants().CMD_ERROR_VAR_NAME]: false })
 }

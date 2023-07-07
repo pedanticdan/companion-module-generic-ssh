@@ -2,31 +2,19 @@ const { combineRgb } = require('@companion-module/base')
 
 module.exports = async function (self) {
 	self.setFeedbackDefinitions({
-		ChannelState: {
-			name: 'Example Feedback',
+		[self.getConstants().CMD_ERROR_FEEDBACK_NAME]: {
+			name: 'Command Error',
 			type: 'boolean',
-			label: 'Channel State',
-			defaultStyle: {
+			description:
+				'Feedback that will activate when the last command(s) ran either returned a non 0 error code, or outputed any data to STDERR.',
+			Styles: {
 				bgcolor: combineRgb(255, 0, 0),
 				color: combineRgb(0, 0, 0),
 			},
-			options: [
-				{
-					id: 'num',
-					type: 'number',
-					label: 'Test',
-					default: 5,
-					min: 0,
-					max: 10,
-				},
-			],
+			options: [],
 			callback: (feedback) => {
-				console.log('Hello world!', feedback.options.num)
-				if (feedback.options.num > 5) {
-					return true
-				} else {
-					return false
-				}
+				var returnedError = self.getVariableValue(self.getConstants().CMD_ERROR_VAR_NAME)
+				return returnedError
 			},
 		},
 	})

@@ -5,6 +5,11 @@ const UpdateFeedbacks = require('./feedbacks')
 const UpdateVariableDefinitions = require('./variables')
 const ssh = require('ssh2')
 
+const Constants = {
+	CMD_ERROR_VAR_NAME: 'returnedError',
+	CMD_ERROR_FEEDBACK_NAME: 'commandErrorState',
+}
+
 class SSHInstance extends InstanceBase {
 	constructor(internal) {
 		super(internal)
@@ -14,9 +19,14 @@ class SSHInstance extends InstanceBase {
 		this.config = config
 
 		this.updateActions() // export actions
-		//this.updateFeedbacks() // export feedbacks
-		//this.updateVariableDefinitions() // export variable definitions
+		this.updateFeedbacks() // export feedbacks
+		this.updateVariableDefinitions() // export variable definitions
 		this.initSSH() // start up SSH connection
+	}
+
+	// allows other files that have a reference to the instance class to grab the constants
+	getConstants() {
+		return Constants
 	}
 
 	initSSH() {

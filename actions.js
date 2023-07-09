@@ -7,6 +7,8 @@ module.exports = function (self) {
 					id: 'cmd',
 					type: 'textinput',
 					label: 'Command',
+					tooltip:
+						'Executes command(s) on the remove server. You can execute multiple commands asynchronously if you separate them with \\n.\nSee help page for more info.',
 				},
 			],
 			callback: async (event) => {
@@ -22,7 +24,7 @@ module.exports = function (self) {
 					// make sure to replace any \\n with a regular \n
 					var currentCmd = element.replace(/\\\\n/g, '\\n')
 
-					self.log('debug', 'Excuting command: ' + currentCmd)
+					self.log('debug', 'Executing command: ' + currentCmd)
 
 					self.sshClient.exec(currentCmd, (err, stream) => {
 						stream.stderr.on('data', (data) => {
@@ -45,6 +47,65 @@ module.exports = function (self) {
 							self.log('debug', data.toString())
 						})
 					})
+				})
+			},
+		},
+		shellCommand: {
+			name: 'Execute SSH Command in Shell Session (Advanced)',
+			options: [
+				{
+					id: 'cmd',
+					type: 'textinput',
+					label: 'Command',
+					tooltip:
+						'Execute command(s) on the remote server using a shell session. You can execute multiple commands sequentially if you separate them with \\n.\nSee help page for more info.',
+				},
+			],
+			callback: async (event) => {
+				self.sshClient.shell((err, stream) => {
+					stream
+						.on('close', (code) => {
+							self.log('stream :: close\n', { code })
+						})
+						.on('data', (myData) => {
+							self.log('debug', myData.toString())
+						})
+						.on('exit', (code) => {
+							self.log('stream :: exit\n', { code })
+							if (code != 0) {
+								// we have an error code that is not 0 coming back, show error status
+								self.setVariableValues({ [self.getConstants().CMD_ERROR_VAR_NAME]: true })
+								self.checkFeedbacks(self.getConstants().CMD_ERROR_FEEDBACK_NAME)
+								self.log('error', 'Command: ' + currentCmd + ' exited with error code: ' + code)
+
+								self.sshClient.end()
+							}
+						})
+						.on('error', (e) => {
+							self.log('stream :: error\n', { e })
+							self.setVariableValues({ [self.getConstants().CMD_ERROR_VAR_NAME]: true })
+							self.checkFeedbacks(self.getConstants().CMD_ERROR_FEEDBACK_NAME)
+							self.sshClient.end()
+						})
+						.stderr.on('data', (data) => {
+							// here is where a STDERR happened
+							self.setVariableValues({ [self.getConstants().CMD_ERROR_VAR_NAME]: true })
+							self.checkFeedbacks(self.getConstants().CMD_ERROR_FEEDBACK_NAME)
+							self.log('error', 'Command: ' + currentCmd + ' wrote to STDERR: ')
+						})
+
+					// we need to check for line breaks and execute each line as a separate command
+					// NOTE: if you need \n to be in the string without a linefeed, you can use \\n to escape \n representing linefeed
+					var currentCmd = event.options.cmd.replace(/\\*(?<!\\)\\n/g, String.fromCharCode(10))
+
+					// make sure to replace any \\n with a regular \n
+					currentCmd = currentCmd.replace(/\\\\n/g, '\\n')
+
+					// make sure to concat a \nexit\n at the end, so that we can end the shell session when we are done executing commands
+					currentCmd = currentCmd + String.fromCharCode(10) + 'exit' + String.fromCharCode(10)
+
+					self.log('debug', 'Executing command: ' + currentCmd)
+					stream.end(currentCmd)
 				})
 			},
 		},

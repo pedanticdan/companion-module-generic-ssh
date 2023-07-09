@@ -4,6 +4,7 @@ const UpdateActions = require('./actions')
 const UpdateFeedbacks = require('./feedbacks')
 const UpdateVariableDefinitions = require('./variables')
 const ssh = require('ssh2')
+const fs = require('fs')
 
 const Constants = {
 	CMD_ERROR_VAR_NAME: 'returnedError',
@@ -41,16 +42,36 @@ class SSHInstance extends InstanceBase {
 			// create the ssh connection
 			this.sshClient = new ssh.Client()
 
+			var loadedPrivateKey = ''
+			// we will enable key-based authentication and load the key from the filepath if there is no password present
+			if (this.config.password == null || this.config.password == '') {
+				try {
+					loadedPrivateKey = fs.readFileSync(this.config.privatekeypath, 'utf8')
+					this.log('debug', 'private-key file loaded successfully!')
+				} catch (err) {
+					this.log('error', 'private-key file load error: ' + err)
+				}
+			}
+
 			// setup the needed parameters for the SSH client connection
 			const authConfig = {
 				host: this.config.host,
 				port: this.config.port,
 				username: this.config.username,
 				password: this.config.password,
+				privateKey: loadedPrivateKey,
+				passphrase: this.config.passphrase,
 			}
 
-			// initiate the SSH client connection
-			this.sshClient.connect(authConfig)
+			try {
+				// initiate the SSH client connection
+				this.sshClient.connect(authConfig)
+			} catch (err) {
+				this.log('error', 'initiating connection failed, error: ' + err)
+				this.updateStatus(InstanceStatus.ConnectionFailure)
+				return
+			}
+
 			this.updateStatus(InstanceStatus.Connecting)
 
 			// for password-based authentication, if the server requests for a password change,
@@ -101,6 +122,7 @@ class SSHInstance extends InstanceBase {
 
 	async configUpdated(config) {
 		this.config = config
+		this.initSSH() // restart SSH connection when the config is updated
 	}
 
 	// Return config fields for web config
@@ -131,6 +153,18 @@ class SSHInstance extends InstanceBase {
 				type: 'textinput',
 				id: 'password',
 				label: 'Password',
+				width: 6,
+			},
+			{
+				type: 'textinput',
+				id: 'privatekeypath',
+				label: 'Full path to Private Key file on local system (key-based authentication)',
+				width: 6,
+			},
+			{
+				type: 'textinput',
+				id: 'passphrase',
+				label: 'Passphrase (key-based authentication)',
 				width: 6,
 			},
 		]

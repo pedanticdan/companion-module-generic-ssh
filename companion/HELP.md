@@ -32,9 +32,10 @@ Configuration fields:
     - If you need to have a "\n" in your command(s), you can use "\\\\n" to represent that.
     - Synchronous means that all of the commands will be executed one at a time, right after the previous command finishes
       - This is achieved by inserting an LF (newline) character between the commands when it is being fed into the shell session. This behaves similar to pasting multiple commands that are separated by newlines into a terminal emulator.
+      - When you run commands in a shell session, it will try to run the exit command last, which is written to the shell after an LF character. For some commands, this may not work, and your shell may stay open indefinitely. You can try to put `;exit` at the end of the command (or something similar, depending on which shell you are using) to exit the shell session after the execution of the other command(s).
   - This is good for when you want to set environment variables before executing another command.
     - Example: `EXAMPLE_ENV_VAR=hello\necho $EXAMPLE_ENV_VAR`
-  - Unfortunately, the "Command Error" feedback is not supported when using this action, as we can't capture STDERR or exit codes using a interactive shell instance at this time.
+  - Unfortunately, the "Command Error" feedback is not supported for STDERR when using this action, as we can't capture STDERR using an interactive shell instance at this time. It should work for exit codes, though.
   - You can see the output from the remote server in the debug log in Companion.
 
 ### Limitations

@@ -62,36 +62,27 @@ module.exports = function (self) {
 				},
 			],
 			callback: async (event) => {
+				// make sure that we start our execution status as OK
+				self.setVariableValues({ [self.getConstants().CMD_ERROR_VAR_NAME]: false })
+				self.checkFeedbacks(self.getConstants().CMD_ERROR_FEEDBACK_NAME)
+
 				self.sshClient.shell((err, stream) => {
 					stream
 						.on('close', (code) => {
-							self.log('stream :: close\n', { code })
-						})
-						.on('data', (myData) => {
-							self.log('debug', myData.toString())
-						})
-						.on('exit', (code) => {
-							self.log('stream :: exit\n', { code })
+							self.log('debug', 'stream closed with code: ' + code)
 							if (code != 0) {
-								// we have an error code that is not 0 coming back, show error status
 								self.setVariableValues({ [self.getConstants().CMD_ERROR_VAR_NAME]: true })
 								self.checkFeedbacks(self.getConstants().CMD_ERROR_FEEDBACK_NAME)
-								self.log('error', 'Command: ' + currentCmd + ' exited with error code: ' + code)
-
-								self.sshClient.end()
 							}
 						})
+						.on('data', (data) => {
+							self.log('debug', data.toString())
+						})
 						.on('error', (e) => {
-							self.log('stream :: error\n', { e })
+							self.log('error', 'Stream error: ' + e)
 							self.setVariableValues({ [self.getConstants().CMD_ERROR_VAR_NAME]: true })
 							self.checkFeedbacks(self.getConstants().CMD_ERROR_FEEDBACK_NAME)
 							self.sshClient.end()
-						})
-						.stderr.on('data', (data) => {
-							// here is where a STDERR happened
-							self.setVariableValues({ [self.getConstants().CMD_ERROR_VAR_NAME]: true })
-							self.checkFeedbacks(self.getConstants().CMD_ERROR_FEEDBACK_NAME)
-							self.log('error', 'Command: ' + currentCmd + ' wrote to STDERR: ')
 						})
 
 					// we need to check for line breaks and execute each line as a separate command

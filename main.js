@@ -53,18 +53,19 @@ class SSHInstance extends InstanceBase {
 			}
 
 			// setup the needed parameters for the SSH client connection
-			const authConfig = {
+			const clientConfig = {
 				host: this.config.host,
 				port: this.config.port,
 				username: this.config.username,
 				password: this.config.password,
 				privateKey: loadedPrivateKey,
 				passphrase: this.config.passphrase,
+				keepaliveInterval: this.config.keepaliveInterval,
 			}
 
 			try {
 				// initiate the SSH client connection
-				this.sshClient.connect(authConfig)
+				this.sshClient.connect(clientConfig)
 			} catch (err) {
 				this.log('error', 'initiating connection failed, error: ' + err)
 				this.updateStatus(InstanceStatus.ConnectionFailure)
@@ -165,6 +166,14 @@ class SSHInstance extends InstanceBase {
 				id: 'passphrase',
 				label: 'Passphrase (key-based authentication)',
 				width: 6,
+			},
+			{
+				type: 'textinput',
+				id: 'keepaliveInterval',
+				label: 'Keepalive Interval in ms',
+				width: 6,
+				regex: Regex.NUMBER,
+				default: 0,
 			},
 		]
 	}

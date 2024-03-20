@@ -9,6 +9,7 @@ module.exports = function (self) {
 					label: 'Command',
 					tooltip:
 						'Executes command(s) on the remove server. You can execute multiple commands asynchronously if you separate them with \\n.\nSee help page for more info.',
+					useVariables: true,
 				},
 			],
 			callback: async (event) => {
@@ -16,13 +17,17 @@ module.exports = function (self) {
 				self.setVariableValues({ [self.getConstants().CMD_ERROR_VAR_NAME]: false })
 				self.checkFeedbacks(self.getConstants().CMD_ERROR_FEEDBACK_NAME)
 
+				let cmd = event.options.cmd
+				//parse the command for any variables
+				let cmdParsed = await self.parseVariablesInString(cmd)
+
 				// we need to check for line breaks and execute each line as a separate command
 				// NOTE: if you need \n to be in the string without a linefeed, you can use \\n to escape \n representing linefeed
-				var currentCmds = event.options.cmd.split(/\\*(?<!\\)\\n/g)
+				let currentCmds = cmdParsed.split(/\\*(?<!\\)\\n/g)
 
 				currentCmds.forEach((element) => {
 					// make sure to replace any \\n with a regular \n
-					var currentCmd = element.replace(/\\\\n/g, '\\n')
+					let currentCmd = element.replace(/\\\\n/g, '\\n')
 
 					self.log('debug', 'Executing command: ' + currentCmd)
 
@@ -59,12 +64,19 @@ module.exports = function (self) {
 					label: 'Command',
 					tooltip:
 						'Execute command(s) on the remote server using a shell session. You can execute multiple commands sequentially if you separate them with \\n.\nSee help page for more info.',
+					useVariables: true,
 				},
 			],
 			callback: async (event) => {
 				// make sure that we start our execution status as OK
 				self.setVariableValues({ [self.getConstants().CMD_ERROR_VAR_NAME]: false })
 				self.checkFeedbacks(self.getConstants().CMD_ERROR_FEEDBACK_NAME)
+
+				let cmd = event.options.cmd
+				//parse the command for any variables
+				let cmdParsed = await self.parseVariablesInString(cmd)
+
+				self.log('debug', 'Executing advanced command: ' + cmdParsed);
 
 				self.sshClient.shell((err, stream) => {
 					stream
@@ -87,7 +99,7 @@ module.exports = function (self) {
 
 					// we need to check for line breaks and execute each line as a separate command
 					// NOTE: if you need \n to be in the string without a linefeed, you can use \\n to escape \n representing linefeed
-					var currentCmd = event.options.cmd.replace(/\\*(?<!\\)\\n/g, String.fromCharCode(10))
+					let currentCmd = cmdParsed.replace(/\\*(?<!\\)\\n/g, String.fromCharCode(10))
 
 					// make sure to replace any \\n with a regular \n
 					currentCmd = currentCmd.replace(/\\\\n/g, '\\n')

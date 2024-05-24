@@ -4,6 +4,7 @@ const UpdateFeedbacks = require('./feedbacks')
 const UpdateVariableDefinitions = require('./variables')
 const ssh = require('ssh2')
 const fs = require('fs')
+const algorithms = require('./algorithms')
 
 const Constants = {
 	CMD_ERROR_VAR_NAME: 'returnedError',
@@ -61,6 +62,7 @@ class SSHInstance extends InstanceBase {
 				privateKey: loadedPrivateKey,
 				passphrase: this.config.passphrase,
 				keepaliveInterval: this.config.keepaliveInterval,
+        algorithms: algorithms.createAlgorithmsObjectForSSH2(this.config),
 			}
 
 			try {
@@ -110,7 +112,7 @@ class SSHInstance extends InstanceBase {
 			})
 
 			this.sshClient.on('handshake', (negotiated) => {
-				this.log('debug', 'Server handshake: ' + negotiated)
+				this.log('debug', 'Server handshake: ' + JSON.stringify(negotiated))
 			})
 		}
 	}
@@ -174,6 +176,23 @@ class SSHInstance extends InstanceBase {
 				width: 6,
 				regex: Regex.NUMBER,
 				default: 0,
+			},
+			{
+				type: 'dropdown',
+				id: 'preferedCipher',
+				label: 'Prefered Cipher Methods',
+				width: 6,
+				default: algorithms.Ciphers.AUTO,
+				choices: [
+          {
+            id: algorithms.Ciphers.AUTO,
+            label: 'Auto'
+          },
+          {
+            id: algorithms.Ciphers.AES256,
+            label: 'AES256',
+          },
+        ],
 			},
 		]
 	}

@@ -62,7 +62,7 @@ class SSHInstance extends InstanceBase {
 				privateKey: loadedPrivateKey,
 				passphrase: this.config.passphrase,
 				keepaliveInterval: this.config.keepaliveInterval,
-        algorithms: algorithms.createAlgorithmsObjectForSSH2(this.config),
+				algorithms: algorithms.createAlgorithmsObjectForSSH2(this.config),
 			}
 
 			try {
@@ -184,15 +184,15 @@ class SSHInstance extends InstanceBase {
 				width: 6,
 				default: algorithms.Ciphers.AUTO,
 				choices: [
-          {
-            id: algorithms.Ciphers.AUTO,
-            label: 'Auto'
-          },
-          {
-            id: algorithms.Ciphers.AES256,
-            label: 'AES256',
-          },
-        ],
+					{
+						id: algorithms.Ciphers.AUTO,
+						label: 'Auto'
+					},
+					{
+						id: algorithms.Ciphers.AES256,
+						label: 'AES256',
+					},
+				],
 			},
 		]
 	}

@@ -114,6 +114,16 @@ class SSHInstance extends InstanceBase {
 			this.sshClient.on('handshake', (negotiated) => {
 				this.log('debug', 'Server handshake: ' + JSON.stringify(negotiated))
 			})
+
+			this.sshClient.on('keyboard-interactive', (name, instructions, instructionsLang, prompts, finish) => {
+				this.log('debug', 'Interactive triggerd: ' + JSON.stringify(instructions));
+				this.log('debug', 'Interactive triggerd: ' + JSON.stringify(instructionsLang));
+				this.log('debug', 'Interactive triggerd: ' + JSON.stringify(prompts));
+				if (prompts.length === 1
+					  && prompts[0].prompt === "Password: ") {
+					finish([this.config.password]);
+				}
+			})
 		}
 	}
 

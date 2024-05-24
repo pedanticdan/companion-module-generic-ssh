@@ -2,27 +2,34 @@
 const Ciphers = {
 	AUTO: 0,
 	AES256: 1,
+	AES192: 2,
+	AES128: 3,
 }
 
 function createAlgorithmsObjectForSSH2(config) {
-	let algorithms = undefined;
+	let regex = undefined;
 
 	switch (config.preferedCipher) {
 		case Ciphers.AUTO:
-			break;
-		case Ciphers.AES256:
-			algorithms = {
-				cipher: { 
-					prepend: new RegExp(/aes256\-gcm/)
-				}
-			}
-			break;
-
+			return undefined;
+			case Ciphers.AES256:
+				regex = new RegExp(/aes256/)
+				break;
+			case Ciphers.AES192:
+				regex = new RegExp(/aes192/)
+				break;
+			case Ciphers.AES128:
+				regex = new RegExp(/aes128/)
+				break;
 		default:
 			break;
 	}
 
-	return algorithms;
+	return {
+		cipher: { 
+			prepend: regex
+		}
+	}
 }
 
 module.exports = {

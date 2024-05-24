@@ -192,6 +192,14 @@ class SSHInstance extends InstanceBase {
 						id: algorithms.Ciphers.AES256,
 						label: 'AES256',
 					},
+					{
+						id: algorithms.Ciphers.AES192,
+						label: 'AES192',
+					},
+					{
+						id: algorithms.Ciphers.AES128,
+						label: 'AES128',
+					},
 				],
 			},
 		]

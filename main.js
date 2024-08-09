@@ -6,9 +6,11 @@ const ssh = require('ssh2')
 const fs = require('fs')
 const algorithms = require('./algorithms')
 
+
 const Constants = {
 	CMD_ERROR_VAR_NAME: 'returnedError',
 	CMD_ERROR_FEEDBACK_NAME: 'commandErrorState',
+	RECONNECT_INVERVAL_MS: 1000
 }
 
 class SSHInstance extends InstanceBase {
@@ -18,6 +20,7 @@ class SSHInstance extends InstanceBase {
 
 	async init(config) {
 		this.config = config
+		this.reconnectTimer = undefined
 
 		this.updateActions() // export actions
 		this.updateFeedbacks() // export feedbacks
@@ -28,6 +31,17 @@ class SSHInstance extends InstanceBase {
 	// allows other files that have a reference to the instance class to grab the constants
 	getConstants() {
 		return Constants
+	}
+
+	queueReconnect() {
+		if (this.reconnectTimer !== undefined) {
+			clearTimeout(this.reconnectTimer)
+		}
+
+		this.reconnectTimer = setTimeout(() => {
+			this.reconnectTimer = undefined
+			this.initSSH()
+		}, Constants.RECONNECT_INVERVAL_MS)
 	}
 
 	initSSH() {
@@ -90,16 +104,19 @@ class SSHInstance extends InstanceBase {
 			this.sshClient.on('error', (err) => {
 				this.log('error', 'Server connection error: ' + err)
 				this.updateStatus(InstanceStatus.ConnectionFailure)
+				this.queueReconnect()
 			})
 
 			this.sshClient.on('end', () => {
 				this.log('error', 'Server ended connection')
 				this.updateStatus(InstanceStatus.Disconnected)
+				this.queueReconnect()
 			})
 
 			this.sshClient.on('timeout', () => {
 				this.log('error', 'Server connection timed out')
 				this.updateStatus(InstanceStatus.ConnectionFailure)
+				this.queueReconnect()
 			})
 
 			this.sshClient.on('connect', () => {
@@ -130,6 +147,12 @@ class SSHInstance extends InstanceBase {
 	// When module gets deleted
 	async destroy() {
 		this.log('debug', 'destroy')
+
+		// clear timers upon destroy to avoid leaked timers
+		if (this.reconnectTimer !== undefined) {
+			clearTimeout(this.reconnectTimer)
+			this.reconnectTimer = undefined
+		}
 	}
 
 	async configUpdated(config) {

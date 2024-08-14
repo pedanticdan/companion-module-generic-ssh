@@ -44,13 +44,17 @@ class SSHInstance extends InstanceBase {
 		}, Constants.RECONNECT_INVERVAL_MS)
 	}
 
-	initSSH() {
+	destroySSH() {
 		if (this.sshClient !== undefined) {
 			// clean up the SSH connection
 			this.sshClient.destroy()
 			delete this.sshClient
 			this.updateStatus(InstanceStatus.Disconnected)
 		}
+	}
+
+	initSSH() {
+		this.destroySSH()
 
 		if (this.config.host) {
 			// create the ssh connection
@@ -60,6 +64,7 @@ class SSHInstance extends InstanceBase {
 			// we will enable key-based authentication and load the key from the filepath if there is no password present
 			if (this.config.password == null || this.config.password == '') {
 				try {
+					// since we are configured to use key-based authentication, we will configure the client config to do so.
 					loadedPrivateKey = fs.readFileSync(this.config.privatekeypath, 'utf8')
 					this.log('debug', 'private-key file loaded successfully!')
 				} catch (err) {
@@ -77,6 +82,8 @@ class SSHInstance extends InstanceBase {
 				passphrase: this.config.passphrase,
 				keepaliveInterval: this.config.keepaliveInterval,
 				algorithms: algorithms.createAlgorithmsObjectForSSH2(this.config),
+				readyTimeout: this.config.handshakeCompleteTimeout,
+				debug: (debugStr) => {this.log('debug', debugStr)} // provides advanced debug info from ssh2 if debug logs are enabled.
 			}
 
 			try {
@@ -120,7 +127,14 @@ class SSHInstance extends InstanceBase {
 			})
 
 			this.sshClient.on('connect', () => {
+				// once we are connected, we will change the connection status to Connecting, as we still need to auth.
 				this.log('debug', 'Server connection successful!')
+				this.updateStatus(InstanceStatus.Connecting)
+			})
+
+			this.sshClient.on('ready', () => {
+				// once we recieve a ready event, we are authenticated and ready to go.
+				this.log('debug', 'Server connection ready!')
 				this.updateStatus(InstanceStatus.Ok)
 			})
 
@@ -133,9 +147,9 @@ class SSHInstance extends InstanceBase {
 			})
 
 			this.sshClient.on('keyboard-interactive', (name, instructions, instructionsLang, prompts, finish) => {
-				this.log('debug', 'Interactive triggerd: ' + JSON.stringify(instructions));
-				this.log('debug', 'Interactive triggerd: ' + JSON.stringify(instructionsLang));
-				this.log('debug', 'Interactive triggerd: ' + JSON.stringify(prompts));
+				this.log('debug', 'Interactive triggered: ' + JSON.stringify(instructions));
+				this.log('debug', 'Interactive triggered: ' + JSON.stringify(instructionsLang));
+				this.log('debug', 'Interactive triggered: ' + JSON.stringify(prompts));
 				if (prompts.length === 1
 					  && prompts[0].prompt === "Password: ") {
 					finish([this.config.password]);
@@ -147,6 +161,8 @@ class SSHInstance extends InstanceBase {
 	// When module gets deleted
 	async destroy() {
 		this.log('debug', 'destroy')
+
+		this.destroySSH()
 
 		// clear timers upon destroy to avoid leaked timers
 		if (this.reconnectTimer !== undefined) {
@@ -209,6 +225,14 @@ class SSHInstance extends InstanceBase {
 				width: 6,
 				regex: Regex.NUMBER,
 				default: 0,
+			},
+			{
+				type: 'textinput',
+				id: 'handshakeCompleteTimeout',
+				label: 'Handshake timeout in ms',
+				width: 6,
+				regex: Regex.NUMBER,
+				default: 20000,
 			},
 			{
 				type: 'dropdown',

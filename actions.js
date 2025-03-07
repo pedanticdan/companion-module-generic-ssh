@@ -50,6 +50,7 @@ module.exports = function (self) {
 
 						stream.on('data', (data) => {
 							self.log('debug', data.toString())
+				            self.setVariableValues({ 'cmd_output':  data.toString() })
 						})
 					})
 				})
